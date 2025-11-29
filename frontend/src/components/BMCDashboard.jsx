@@ -4,6 +4,8 @@ import MapComponent from './MapComponent';
 const BMCDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [alerts, setAlerts] = useState([]);
+    const [mapReports, setMapReports] = useState([]);
 
     const fetchStats = async () => {
         try {
@@ -17,9 +19,35 @@ const BMCDashboard = () => {
         }
     };
 
+    const fetchAlerts = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/api/alerts?limit=10');
+            const data = await response.json();
+            setAlerts(data.alerts || []);
+        } catch (error) {
+            console.error('Error fetching alerts:', error);
+        }
+    };
+
+    const fetchMapReports = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/api/reports/map');
+            const data = await response.json();
+            setMapReports(data.reports || []);
+        } catch (error) {
+            console.error('Error fetching map reports:', error);
+        }
+    };
+
     useEffect(() => {
         fetchStats();
-        const interval = setInterval(fetchStats, 10000); // Poll every 10s
+        fetchAlerts();
+        fetchMapReports();
+        const interval = setInterval(() => {
+            fetchStats();
+            fetchAlerts();
+            fetchMapReports();
+        }, 10000); // Poll every 10s
         return () => clearInterval(interval);
     }, []);
 
@@ -66,7 +94,10 @@ const BMCDashboard = () => {
                         </div>
                         <div className="h-[600px]">
                             {stats?.ward_details ? (
-                                <MapComponent riskZones={stats.ward_details} />
+                                <MapComponent 
+                                    riskZones={stats.ward_details} 
+                                    reports={mapReports}
+                                />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-gray-400">Loading Map...</div>
                             )}
@@ -130,21 +161,61 @@ const BMCDashboard = () => {
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
                             <h4 className="mb-3 text-sm font-bold text-blue-700">🦟 Fogging Trucks</h4>
-                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards * 2 + 2} Units</div>
+                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards * 2 + 2 || 6} Units</div>
                             <div className="mt-2 text-sm text-gray-600">Priority: Critical Wards first</div>
                         </div>
                         <div className="rounded-lg border border-green-200 bg-green-50 p-6">
                             <h4 className="mb-3 text-sm font-bold text-green-700">👨‍⚕️ Medical Teams</h4>
-                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards * 3} Teams</div>
+                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards * 3 || 9} Teams</div>
                             <div className="mt-2 text-sm text-gray-600">Focus: Fever Camps in Slum Areas</div>
                         </div>
                         <div className="rounded-lg border border-red-200 bg-red-50 p-6">
                             <h4 className="mb-3 text-sm font-bold text-red-700">🚑 Ambulances</h4>
-                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards + 5} Units</div>
+                            <div className="text-2xl font-bold text-gray-900">{stats?.critical_wards + 5 || 8} Units</div>
                             <div className="mt-2 text-sm text-gray-600">Standby for Emergency Transfers</div>
                         </div>
                     </div>
                 </div>
+
+                {/* AI-Generated Alerts */}
+                {alerts && alerts.length > 0 && (
+                    <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <h3 className="mb-4 text-lg font-bold text-gray-900">🚨 Real-Time AI Outbreak Alerts</h3>
+                        <div className="space-y-3">
+                            {alerts.map(alert => (
+                                <div key={alert.id} className={`rounded-lg border p-4 ${
+                                    alert.severity === 'CRITICAL' ? 'border-red-200 bg-red-50' :
+                                    alert.severity === 'HIGH' ? 'border-orange-200 bg-orange-50' :
+                                    'border-yellow-200 bg-yellow-50'
+                                }`}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <span className={`rounded-full px-2 py-1 text-xs font-bold ${
+                                                    alert.severity === 'CRITICAL' ? 'bg-red-200 text-red-900' :
+                                                    alert.severity === 'HIGH' ? 'bg-orange-200 text-orange-900' :
+                                                    'bg-yellow-200 text-yellow-900'
+                                                }`}>
+                                                    {alert.severity}
+                                                </span>
+                                                <span className="text-sm font-semibold text-gray-700">
+                                                    {alert.wards?.name || 'Unknown Ward'}
+                                                </span>
+                                            </div>
+                                            <h4 className="font-bold text-gray-900">{alert.message}</h4>
+                                            {alert.action_plan?.public_message && (
+                                                <p className="mt-1 text-sm text-gray-600">{alert.action_plan.public_message}</p>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-gray-400">
+                                            {new Date(alert.created_at).toLocaleTimeString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

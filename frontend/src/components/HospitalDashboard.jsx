@@ -3,6 +3,7 @@ import MapComponent from './MapComponent';
 
 const HospitalDashboard = ({ hospital, onLogout }) => {
     const [stats, setStats] = useState(null);
+    const [alerts, setAlerts] = useState([]);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -14,7 +15,26 @@ const HospitalDashboard = ({ hospital, onLogout }) => {
                 console.error('Error fetching hospital stats:', error);
             }
         };
+
+        const fetchAlerts = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/api/alerts?limit=5');
+                const data = await response.json();
+                setAlerts(data.alerts || []);
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
+        };
+
         fetchStats();
+        fetchAlerts();
+        
+        const interval = setInterval(() => {
+            fetchStats();
+            fetchAlerts();
+        }, 30000); // Refresh every 30s
+        
+        return () => clearInterval(interval);
     }, [hospital]);
 
     if (!stats) return (
@@ -176,12 +196,52 @@ const HospitalDashboard = ({ hospital, onLogout }) => {
                             <h3 className="mb-6 text-lg font-bold text-gray-900">📋 Readiness Checklist</h3>
                             <div className="space-y-3">
                                 {local_stats.checklist.map((item, idx) => (
-                                    <div key={idx} className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-3 text-sm text-gray-700">
+                                    <div key={idx} className="rounded-lg border-l-4 border-sky-500 bg-sky-50 p-3 text-sm text-gray-700">
                                         {item}
                                     </div>
                                 ))}
                             </div>
                         </div>
+
+                        {/* AI Outbreak Alerts */}
+                        {alerts && alerts.length > 0 && (
+                            <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+                                <h3 className="mb-6 text-lg font-bold text-gray-900">🚨 AI Outbreak Alerts</h3>
+                                <div className="space-y-3">
+                                    {alerts.map(alert => (
+                                        <div key={alert.id} className={`rounded-lg border p-4 ${
+                                            alert.severity === 'CRITICAL' ? 'border-red-200 bg-red-50' :
+                                            alert.severity === 'HIGH' ? 'border-orange-200 bg-orange-50' :
+                                            'border-yellow-200 bg-yellow-50'
+                                        }`}>
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <div className="mb-1 flex items-center gap-2">
+                                                        <span className={`rounded px-2 py-1 text-xs font-bold ${
+                                                            alert.severity === 'CRITICAL' ? 'bg-red-200 text-red-900' :
+                                                            alert.severity === 'HIGH' ? 'bg-orange-200 text-orange-900' :
+                                                            'bg-yellow-200 text-yellow-900'
+                                                        }`}>
+                                                            {alert.severity}
+                                                        </span>
+                                                        <span className="text-sm font-semibold text-gray-700">
+                                                            {alert.wards?.name || 'Unknown'}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-gray-900">{alert.message}</h4>
+                                                    {alert.action_plan?.public_message && (
+                                                        <p className="mt-1 text-sm text-gray-600">{alert.action_plan.public_message}</p>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(alert.created_at).toLocaleTimeString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

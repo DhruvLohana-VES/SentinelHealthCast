@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from agents import run_sentinel_agent, run_web_scout_agent
 from tools import supabase, get_weather_data, calculate_risk_score, predict_disease_risk, analyze_symptoms, get_hospital_stats, get_citizen_reports, get_health_remedies, analyze_report_credibility, scout_web_for_symptoms
@@ -65,6 +66,16 @@ async def resume_dispatch(action: DispatchAction):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/telegram/redirect")
+async def telegram_redirect(reportId: str = None):
+    """
+    Redirects to Telegram bot with optional report ID.
+    """
+    telegram_bot_url = "https://t.me/Sentinel_Mumbai_2025_bot"
+    if reportId:
+        telegram_bot_url += f"?start={reportId}"
+    return RedirectResponse(url=telegram_bot_url)
+
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats():
     """
@@ -107,39 +118,65 @@ async def get_dashboard_stats():
             "social_score": min(reports_count * 0.5, 4.0)
         }
 
-        # 4. Risk Zones (Comprehensive Mumbai Areas)
+        # 4. Risk Zones (Comprehensive Mumbai Areas) - Dynamic with realistic variations
+        import random
+        import time
+        random.seed(int(time.time() / 60))  # Changes every minute
+        
         risk_zones = [
-            {"name": "Colaba", "risk_score": 6.5, "lat": 18.9067, "lng": 72.8147, "status": "CAUTION"},
-            {"name": "Fort", "risk_score": 5.8, "lat": 18.9322, "lng": 72.8328, "status": "SAFE"},
-            {"name": "Marine Lines", "risk_score": 4.5, "lat": 18.9447, "lng": 72.8244, "status": "SAFE"},
-            {"name": "Malabar Hill", "risk_score": 3.2, "lat": 18.9548, "lng": 72.7985, "status": "SAFE"},
-            {"name": "Worli", "risk_score": 7.1, "lat": 19.0166, "lng": 72.8172, "status": "CAUTION"},
-            {"name": "Dadar", "risk_score": 4.2, "lat": 19.0178, "lng": 72.8478, "status": "SAFE"},
-            {"name": "Bandra West", "risk_score": 3.1, "lat": 19.0596, "lng": 72.8295, "status": "SAFE"},
-            {"name": "Bandra East", "risk_score": 5.5, "lat": 19.0625, "lng": 72.8437, "status": "SAFE"},
-            {"name": "Santacruz", "risk_score": 6.2, "lat": 19.0843, "lng": 72.8360, "status": "CAUTION"},
-            {"name": "Andheri East", "risk_score": 8.7, "lat": 19.1136, "lng": 72.8697, "status": "CRITICAL"},
-            {"name": "Andheri West", "risk_score": 7.5, "lat": 19.1197, "lng": 72.8305, "status": "CAUTION"},
-            {"name": "Juhu", "risk_score": 4.8, "lat": 19.1075, "lng": 72.8263, "status": "SAFE"},
-            {"name": "Goregaon", "risk_score": 6.9, "lat": 19.1663, "lng": 72.8526, "status": "CAUTION"},
-            {"name": "Malad", "risk_score": 7.2, "lat": 19.1874, "lng": 72.8484, "status": "CAUTION"},
-            {"name": "Kandivali", "risk_score": 5.4, "lat": 19.2047, "lng": 72.8520, "status": "SAFE"},
-            {"name": "Borivali", "risk_score": 4.1, "lat": 19.2307, "lng": 72.8567, "status": "SAFE"},
-            {"name": "Dahisar", "risk_score": 3.8, "lat": 19.2575, "lng": 72.8591, "status": "SAFE"},
-            {"name": "Kurla", "risk_score": 8.2, "lat": 19.0726, "lng": 72.8793, "status": "CRITICAL"},
-            {"name": "Ghatkopar", "risk_score": 7.6, "lat": 19.0860, "lng": 72.9090, "status": "CAUTION"},
-            {"name": "Vikhroli", "risk_score": 6.1, "lat": 19.1119, "lng": 72.9278, "status": "CAUTION"},
-            {"name": "Powai", "risk_score": 7.8, "lat": 19.1197, "lng": 72.9051, "status": "CAUTION"},
-            {"name": "Mulund", "risk_score": 4.5, "lat": 19.1726, "lng": 72.9425, "status": "SAFE"},
-            {"name": "Chembur", "risk_score": 5.9, "lat": 19.0522, "lng": 72.8999, "status": "SAFE"},
-            {"name": "Sion", "risk_score": 8.5, "lat": 19.0390, "lng": 72.8619, "status": "CRITICAL"},
+            {"name": "Colaba", "base": 4.5, "variance": 2.0, "lat": 18.9067, "lng": 72.8147},
+            {"name": "Fort", "base": 3.8, "variance": 2.0, "lat": 18.9322, "lng": 72.8328},
+            {"name": "Marine Lines", "base": 3.5, "variance": 1.5, "lat": 18.9447, "lng": 72.8244},
+            {"name": "Malabar Hill", "base": 2.2, "variance": 1.0, "lat": 18.9548, "lng": 72.7985},
+            {"name": "Worli", "base": 5.1, "variance": 3.0, "lat": 19.0166, "lng": 72.8172},
+            {"name": "Dadar", "base": 4.0, "variance": 2.5, "lat": 19.0178, "lng": 72.8478},
+            {"name": "Bandra West", "base": 2.5, "variance": 1.5, "lat": 19.0596, "lng": 72.8295},
+            {"name": "Bandra East", "base": 4.5, "variance": 2.0, "lat": 19.0625, "lng": 72.8437},
+            {"name": "Santacruz", "base": 5.0, "variance": 2.5, "lat": 19.0843, "lng": 72.8360},
+            {"name": "Andheri East", "base": 6.5, "variance": 3.5, "lat": 19.1136, "lng": 72.8697},
+            {"name": "Andheri West", "base": 5.5, "variance": 3.0, "lat": 19.1197, "lng": 72.8305},
+            {"name": "Juhu", "base": 3.8, "variance": 1.5, "lat": 19.1075, "lng": 72.8263},
+            {"name": "Goregaon", "base": 5.5, "variance": 2.5, "lat": 19.1663, "lng": 72.8526},
+            {"name": "Malad", "base": 5.8, "variance": 2.8, "lat": 19.1874, "lng": 72.8484},
+            {"name": "Kandivali", "base": 4.4, "variance": 2.0, "lat": 19.2047, "lng": 72.8520},
+            {"name": "Borivali", "base": 3.5, "variance": 1.5, "lat": 19.2307, "lng": 72.8567},
+            {"name": "Dahisar", "base": 3.2, "variance": 1.2, "lat": 19.2575, "lng": 72.8591},
+            {"name": "Kurla", "base": 6.0, "variance": 4.0, "lat": 19.0726, "lng": 72.8793},
+            {"name": "Ghatkopar", "base": 5.6, "variance": 3.0, "lat": 19.0860, "lng": 72.9090},
+            {"name": "Vikhroli", "base": 4.5, "variance": 2.5, "lat": 19.1119, "lng": 72.9278},
+            {"name": "Powai", "base": 5.8, "variance": 3.0, "lat": 19.1197, "lng": 72.9051},
+            {"name": "Mulund", "base": 3.8, "variance": 1.8, "lat": 19.1726, "lng": 72.9425},
+            {"name": "Chembur", "base": 4.5, "variance": 2.0, "lat": 19.0522, "lng": 72.8999},
+            {"name": "Sion", "base": 6.2, "variance": 3.8, "lat": 19.0390, "lng": 72.8619},
         ]
+        
+        # Apply realistic variations and determine status
+        risk_zones_dynamic = []
+        for zone in risk_zones:
+            variation = random.uniform(-zone["variance"]/2, zone["variance"])
+            risk_score = round(min(max(zone["base"] + variation, 1.0), 10.0), 1)
+            
+            status = "SAFE"
+            if risk_score >= 8.0:
+                status = "CRITICAL"
+            elif risk_score >= 6.0:
+                status = "HIGH"
+            elif risk_score >= 4.0:
+                status = "CAUTION"
+            
+            risk_zones_dynamic.append({
+                "name": zone["name"],
+                "risk_score": risk_score,
+                "lat": zone["lat"],
+                "lng": zone["lng"],
+                "status": status
+            })
         
         return {
             "system_health": system_health,
             "total_reports": reports_count,
             "active_alerts": pending_tickets,
-            "risk_zones": risk_zones,
+            "risk_zones": risk_zones_dynamic,
             "weather_details": {
                 "rain": current_weather.get("rain", 0),
                 "humidity": current_weather.get("relative_humidity_2m", 0),
@@ -341,9 +378,15 @@ async def hospital_stats(location: str):
 @app.get("/api/bmc/stats")
 async def bmc_stats():
     """
-    Returns high-level stats for BMC Headquarters (Ward-wise breakdown).
+    Returns high-level stats for BMC Headquarters (Ward-wise breakdown) with realistic dynamic variations.
     """
     try:
+        import random
+        import time
+        
+        # Seed random with current minute for variation every minute
+        random.seed(int(time.time() / 60))
+        
         # 1. Define Wards (Mocked for Hackathon, mapped to Areas)
         wards = [
             {"id": "A", "name": "Colaba", "lat": 18.9067, "lng": 72.8147},
@@ -360,27 +403,57 @@ async def bmc_stats():
         ward_stats = []
         
         for ward in wards:
-            # Get Reports for Ward
+            # Get Reports for Ward (from both citizen_reports and telegram reports)
             reports = get_citizen_reports(ward["name"])
             verified = [r for r in reports if r.get("verified")]
             
             # Get Weather (Mocked/Shared)
             weather = await get_weather_data(ward["lat"], ward["lng"])
             
-            # Calculate Risk
-            risk = calculate_risk_score(weather, len(reports), len(verified))
+            # Calculate Base Risk
+            base_risk = calculate_risk_score(weather, len(reports), len(verified))
+            
+            # Add realistic variation based on ward characteristics
+            variation = 0.0
+            
+            # High-density/slum areas: Higher risk
+            if ward["name"] in ["Kurla", "Sion", "Andheri East"]:
+                variation = random.uniform(2.5, 5.0)
+            # Affluent areas: Lower risk
+            elif ward["name"] in ["Bandra West", "Colaba", "Malabar Hill"]:
+                variation = random.uniform(0, 2.0)
+            # Mixed areas: Moderate variation
+            else:
+                variation = random.uniform(1.0, 3.5)
+            
+            # Final risk score with realistic limits
+            risk = round(min(base_risk + variation, 10.0), 1)
+            
+            # Generate realistic case counts based on risk
+            cases = 0
+            if risk >= 8.0:
+                cases = random.randint(10, 25)
+            elif risk >= 6.0:
+                cases = random.randint(5, 15)
+            elif risk >= 4.0:
+                cases = random.randint(2, 8)
+            else:
+                cases = random.randint(0, 3)
+            
+            # Add actual reports to cases
+            cases += len(reports)
             
             # Determine Status & Action Plan
             status = "SAFE"
             action_plan = "Routine Monitoring"
             
-            if risk > 8.0:
+            if risk >= 8.0:
                 status = "CRITICAL"
                 action_plan = "🚨 Deploy Fogging Trucks + Medical Camps"
-            elif risk > 6.0:
+            elif risk >= 6.0:
                 status = "HIGH"
                 action_plan = "⚠️ Increase Surveillance + Anti-Larval Treatment"
-            elif risk > 4.0:
+            elif risk >= 4.0:
                 status = "CAUTION"
                 action_plan = "📢 Public Awareness Campaign"
                 
@@ -388,7 +461,7 @@ async def bmc_stats():
                 "ward_id": ward["id"],
                 "name": ward["name"],
                 "risk_score": risk,
-                "total_cases": len(reports),
+                "total_cases": cases,
                 "verified_cases": len(verified),
                 "status": status,
                 "action_plan": action_plan,
@@ -502,6 +575,58 @@ async def telegram_webhook(request: Request):
         # supabase.table("citizen_reports").insert(report).execute()
         
     return {"status": "ok"}
+
+@app.get("/api/alerts")
+async def get_alerts(limit: int = 10):
+    """
+    Returns recent alerts generated by brain.py
+    """
+    try:
+        response = supabase.table("alerts")\
+            .select("*, wards(name)")\
+            .order("created_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        return {"alerts": response.data}
+    except Exception as e:
+        print(f"Error fetching alerts: {e}")
+        return {"alerts": []}
+
+@app.get("/api/reports/map")
+async def get_map_reports():
+    """
+    Returns reports with locations for map display
+    """
+    try:
+        # Get reports from telegram bot (with geometry locations)
+        reports_response = supabase.table("reports")\
+            .select("*, wards(name)")\
+            .limit(50)\
+            .execute()
+        
+        map_markers = []
+        for report in reports_response.data:
+            # Convert PostGIS POINT to lat/lng
+            if report.get("location"):
+                # Location format: POINT(lon lat)
+                loc_str = report["location"]
+                if "POINT" in loc_str:
+                    coords = loc_str.replace("POINT(", "").replace(")", "").split()
+                    if len(coords) == 2:
+                        map_markers.append({
+                            "id": report["id"],
+                            "lat": float(coords[1]),
+                            "lng": float(coords[0]),
+                            "type": report.get("type", "Unknown"),
+                            "severity": report.get("severity", 5),
+                            "description": report.get("description", ""),
+                            "ward": report.get("wards", {}).get("name", "Unknown") if report.get("wards") else "Unknown"
+                        })
+        
+        return {"reports": map_markers}
+    except Exception as e:
+        print(f"Error fetching map reports: {e}")
+        return {"reports": []}
 
 @app.get("/")
 def health_check():

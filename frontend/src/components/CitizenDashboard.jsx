@@ -96,6 +96,13 @@ const CitizenDashboard = ({ user, onLogout }) => {
                     <div style={{ color: '#94a3b8' }}>Stay safe and informed.</div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button 
+                        className="btn btn-primary" 
+                        onClick={() => window.open('https://t.me/Sentinel_Mumbai_2025_bot', '_blank')}
+                        style={{ background: '#0088cc' }}
+                    >
+                        📱 Open in Telegram
+                    </button>
                     <button className="btn btn-primary" onClick={() => setShowReportModal(true)} style={{ background: '#ef4444' }}>
                         📢 Report Issue
                     </button>

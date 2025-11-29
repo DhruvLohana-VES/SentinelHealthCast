@@ -9,6 +9,7 @@ const OfficialDashboard = () => {
     const [pendingTicket, setPendingTicket] = useState(null);
 
     const [pendingReports, setPendingReports] = useState([]);
+    const [alerts, setAlerts] = useState([]);
 
     const fetchStats = async () => {
         try {
@@ -30,12 +31,24 @@ const OfficialDashboard = () => {
         }
     };
 
+    const fetchAlerts = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/api/alerts?limit=5');
+            const data = await response.json();
+            setAlerts(data.alerts || []);
+        } catch (error) {
+            console.error('Error fetching alerts:', error);
+        }
+    };
+
     useEffect(() => {
         fetchStats();
         fetchPendingReports();
+        fetchAlerts();
         const interval = setInterval(() => {
             fetchStats();
             fetchPendingReports();
+            fetchAlerts();
         }, 10000); // Poll every 10s
         return () => clearInterval(interval);
     }, []);
@@ -204,6 +217,55 @@ const OfficialDashboard = () => {
 
                 {/* Advanced Analytics Panel */}
                 <AnalyticsPanel stats={stats} />
+
+                {/* AI-Generated Alerts Section */}
+                {alerts && alerts.length > 0 && (
+                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <h3 className="mb-4 text-xl font-bold text-gray-900">🚨 AI-Generated Outbreak Alerts</h3>
+                        <div className="space-y-3">
+                            {alerts.map(alert => (
+                                <div key={alert.id} className={`rounded-lg border p-4 ${
+                                    alert.severity === 'CRITICAL' ? 'border-red-200 bg-red-50' :
+                                    alert.severity === 'HIGH' ? 'border-orange-200 bg-orange-50' :
+                                    'border-yellow-200 bg-yellow-50'
+                                }`}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${
+                                                    alert.severity === 'CRITICAL' ? 'bg-red-200 text-red-800' :
+                                                    alert.severity === 'HIGH' ? 'bg-orange-200 text-orange-800' :
+                                                    'bg-yellow-200 text-yellow-800'
+                                                }`}>
+                                                    {alert.severity}
+                                                </span>
+                                                <span className="text-sm font-semibold text-gray-700">
+                                                    {alert.wards?.name || 'Unknown Ward'}
+                                                </span>
+                                            </div>
+                                            <h4 className="mb-2 font-bold text-gray-900">{alert.message}</h4>
+                                            {alert.action_plan && (
+                                                <div className="text-sm text-gray-600">
+                                                    <p className="mb-2">{alert.action_plan.public_message}</p>
+                                                    {alert.action_plan.action_items && (
+                                                        <ul className="ml-4 list-disc space-y-1">
+                                                            {alert.action_plan.action_items.map((item, idx) => (
+                                                                <li key={idx} className="text-xs">{item}</li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right text-xs text-gray-500">
+                                            {new Date(alert.created_at).toLocaleString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {showModal && pendingTicket && (
                     <ApprovalModal
